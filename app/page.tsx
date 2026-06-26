@@ -625,6 +625,71 @@ export default function Home() {
     }
   };
 
+  // Backup & Restore Database
+  const handleExportBackup = () => {
+    try {
+      const backupData = {
+        version: "1.0",
+        tires: tires,
+        customLogo: customLogo,
+        timestamp: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `backup_painel_transporte_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setNotifications(prev => [
+        {
+          id: Date.now().toString(),
+          text: "Backup do banco de dados exportado com sucesso!",
+          time: "Agora mesmo",
+          read: false
+        },
+        ...prev
+      ]);
+    } catch (e: any) {
+      alert("Erro ao exportar backup: " + e.message);
+    }
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data && Array.isArray(data.tires)) {
+          updateTiresState(data.tires);
+          if (data.customLogo) {
+            handleLogoUpload(data.customLogo);
+          }
+          alert("Backup restaurado com sucesso! " + data.tires.length + " pneus carregados.");
+          setNotifications(prev => [
+            {
+              id: Date.now().toString(),
+              text: "Backup do banco de dados importado com sucesso!",
+              time: "Agora mesmo",
+              read: false
+            },
+            ...prev
+          ]);
+        } else {
+          alert("O arquivo selecionado não é um backup de banco de dados válido.");
+        }
+      } catch (err) {
+        alert("Erro ao ler o arquivo de backup. Certifique-se de selecionar um arquivo JSON válido.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // Real XLS / XLSX and CSV/TSV parser
   const handleXLSImport = async () => {
     // Helper to normalize headers/columns
@@ -2575,6 +2640,42 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   >
                     Limpar Tudo
                   </button>
+                </div>
+
+                {/* Portabilidade Vercel & GitHub */}
+                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg space-y-3 leading-relaxed font-medium">
+                  <p className="flex items-center gap-2 font-bold mb-1 text-emerald-800">
+                    <Database className="w-4 h-4 shrink-0" />
+                    Portabilidade para GitHub & Vercel
+                  </p>
+                  <p className="text-xs text-emerald-700">
+                    Todas as suas alterações (pneus editados, novos pneus, logotipo personalizado, etc.) são salvas automaticamente no <strong>localStorage</strong> do seu navegador. Ao subir o projeto no GitHub ou implantar na Vercel, as informações <strong>não vão sumir</strong> no seu navegador!
+                  </p>
+                  <p className="text-xs text-emerald-700">
+                    Para garantir total segurança, trocar de dispositivo ou salvar o seu banco de dados atual diretamente no repositório do seu projeto, você pode baixar o backup JSON e restaurá-lo a qualquer momento:
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleExportBackup}
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors cursor-pointer text-xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Exportar Backup (JSON)
+                    </button>
+                    
+                    <label className="flex items-center justify-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-300 font-bold rounded-lg transition-colors cursor-pointer text-xs text-center">
+                      <Upload className="w-3.5 h-3.5" />
+                      Importar Backup (JSON)
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportBackup}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg leading-relaxed font-medium">
