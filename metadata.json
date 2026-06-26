@@ -1,0 +1,6 @@
+{
+  "name": "Gestão de Pneus",
+  "description": "Painel de controle de estoque de pneus com dashboards interativos, filtros por filial e ano de desinstalação, importação de dados e tabela geral detalhada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
