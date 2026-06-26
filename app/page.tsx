@@ -103,6 +103,150 @@ function sanitizeTiresList(list: Tire[]): Tire[] {
   }));
 }
 
+interface TooltipProps {
+  children: React.ReactNode;
+  content: string;
+  position?: "top" | "bottom" | "left" | "right";
+}
+
+function Tooltip({ children, content, position = "top" }: TooltipProps) {
+  const positionClasses = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+
+  const arrowClasses = {
+    top: "top-full left-1/2 -translate-x-1/2 -mt-1 border-t-slate-800 border-x-transparent border-b-transparent",
+    bottom: "bottom-full left-1/2 -translate-x-1/2 -mb-1 border-b-slate-800 border-x-transparent border-t-transparent",
+    left: "left-full top-1/2 -translate-y-1/2 -ml-1 border-l-slate-800 border-y-transparent border-r-transparent",
+    right: "right-full top-1/2 -translate-y-1/2 -mr-1 border-r-slate-800 border-y-transparent border-l-transparent",
+  };
+
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div
+        className={`invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute ${positionClasses[position]} z-[9999] w-64 p-2.5 text-[11px] text-white bg-slate-800/95 backdrop-blur-xs rounded-lg shadow-lg pointer-events-none font-sans leading-relaxed text-center font-normal normal-case`}
+      >
+        {content}
+        <div className={`absolute border-4 ${arrowClasses[position]}`}></div>
+      </div>
+    </div>
+  );
+}
+
+interface MultiSelectProps {
+  label: string;
+  options: string[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  placeholder: string;
+}
+
+function MultiSelect({ label, options, selectedValues, onChange, placeholder }: MultiSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const toggleOption = (option: string) => {
+    if (selectedValues.includes(option)) {
+      onChange(selectedValues.filter(v => v !== option));
+    } else {
+      onChange([...selectedValues, option]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    onChange([]); // Empty means "Todos"
+  };
+
+  const isAllSelected = selectedValues.length === 0;
+
+  const displayLabel = () => {
+    if (isAllSelected) return placeholder;
+    if (selectedValues.length === 1) return selectedValues[0];
+    if (selectedValues.length <= 2) return selectedValues.join(", ");
+    return `${selectedValues.length} selecionados`;
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-3 text-xs font-semibold text-slate-700 hover:border-[#0059bb] focus:outline-none focus:border-[#0059bb] focus:ring-1 focus:ring-[#0059bb] cursor-pointer transition-all text-left"
+      >
+        <span className="truncate pr-2">{displayLabel()}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg z-[9999] max-h-56 overflow-y-auto py-1 animate-in fade-in duration-100">
+          <div className="px-2 py-1.5 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-500 bg-slate-50/50">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              className={`hover:text-[#0059bb] transition-colors ${isAllSelected ? "text-[#0059bb]" : ""}`}
+            >
+              Marcar Todos
+            </button>
+            {selectedValues.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-red-500 hover:text-red-600 transition-colors"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+
+          <div className="p-1 space-y-0.5">
+            {options.map((option) => {
+              const isChecked = selectedValues.includes(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => toggleOption(option)}
+                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-semibold text-left transition-colors ${
+                    isChecked
+                      ? "bg-blue-50 text-[#0059bb]"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="truncate mr-2">{option}</span>
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                    isChecked
+                      ? "bg-[#0059bb] border-[#0059bb]"
+                      : "border-slate-300 bg-white"
+                  }`}>
+                    {isChecked && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function Home() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<"dashboard" | "estoque" | "filiais" | "relatorios" | "config" | string>("dashboard");
@@ -153,11 +297,27 @@ export default function Home() {
   // Search State
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filters State
-  const [selectedAno, setSelectedAno] = useState<string>("Todos");
-  const [selectedFilial, setSelectedFilial] = useState<string>("Todos");
-  const [selectedMes, setSelectedMes] = useState<string>("Todos");
-  const [selectedMotivo, setSelectedMotivo] = useState<string>("Todos");
+  // Filters State (Supports Multi-Selection)
+  const [selectedAnos, setSelectedAnos] = useState<string[]>([]);
+  const [selectedFiliais, setSelectedFiliais] = useState<string[]>([]);
+  const [selectedMeses, setSelectedMeses] = useState<string[]>([]);
+  const [selectedMotivos, setSelectedMotivos] = useState<string[]>([]);
+
+  const selectedAno = useMemo(() => {
+    return selectedAnos.length === 0 ? "Todos" : selectedAnos.join(", ");
+  }, [selectedAnos]);
+
+  const selectedFilial = useMemo(() => {
+    return selectedFiliais.length === 0 ? "Todos" : selectedFiliais.join(", ");
+  }, [selectedFiliais]);
+
+  const selectedMes = useMemo(() => {
+    return selectedMeses.length === 0 ? "Todos" : selectedMeses.join(", ");
+  }, [selectedMeses]);
+
+  const selectedMotivo = useMemo(() => {
+    return selectedMotivos.length === 0 ? "Todos" : selectedMotivos.join(", ");
+  }, [selectedMotivos]);
 
   const changeSearchTerm = (val: string) => {
     setSearchTerm(val);
@@ -165,22 +325,38 @@ export default function Home() {
   };
 
   const changeSelectedAno = (val: string) => {
-    setSelectedAno(val);
+    if (val === "Todos") {
+      setSelectedAnos([]);
+    } else {
+      setSelectedAnos([val]);
+    }
     setCurrentPage(1);
   };
 
   const changeSelectedFilial = (val: string) => {
-    setSelectedFilial(val);
+    if (val === "Todos") {
+      setSelectedFiliais([]);
+    } else {
+      setSelectedFiliais([val]);
+    }
     setCurrentPage(1);
   };
 
   const changeSelectedMes = (val: string) => {
-    setSelectedMes(val);
+    if (val === "Todos") {
+      setSelectedMeses([]);
+    } else {
+      setSelectedMeses([val]);
+    }
     setCurrentPage(1);
   };
 
   const changeSelectedMotivo = (val: string) => {
-    setSelectedMotivo(val);
+    if (val === "Todos") {
+      setSelectedMotivos([]);
+    } else {
+      setSelectedMotivos([val]);
+    }
     setCurrentPage(1);
   };
 
@@ -348,15 +524,15 @@ export default function Home() {
   const filteredTires = useMemo(() => {
     return tires.filter(tire => {
       // Branch filter
-      const matchesFilial = selectedFilial === "Todos" || tire.cdFilial === selectedFilial;
+      const matchesFilial = selectedFiliais.length === 0 || selectedFiliais.includes(tire.cdFilial);
       // Year filter
-      const matchesAno = selectedAno === "Todos" || String(tire.ano) === selectedAno;
+      const matchesAno = selectedAnos.length === 0 || selectedAnos.includes(String(tire.ano));
       // Month filter
-      const matchesMes = selectedMes === "Todos" || tire.mes === selectedMes;
+      const matchesMes = selectedMeses.length === 0 || selectedMeses.includes(tire.mes);
       // Motivo filter
       const matchesMotivo =
-        selectedMotivo === "Todos" ||
-        getNormalizedMotivo(tire.motivoDesinstalacao) === selectedMotivo.toUpperCase().trim();
+        selectedMotivos.length === 0 ||
+        selectedMotivos.some(m => m.toUpperCase().trim() === getNormalizedMotivo(tire.motivoDesinstalacao));
 
       // Search term
       const searchLower = searchTerm.toLowerCase();
@@ -372,7 +548,7 @@ export default function Home() {
 
       return matchesFilial && matchesAno && matchesMes && matchesMotivo && matchesSearch;
     });
-  }, [tires, selectedFilial, selectedAno, selectedMes, selectedMotivo, searchTerm]);
+  }, [tires, selectedFiliais, selectedAnos, selectedMeses, selectedMotivos, searchTerm]);
 
   // KPIs
   const totalTiresCount = filteredTires.length;
@@ -1283,18 +1459,16 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 Mês Desinstalação
               </label>
-              <div className="relative">
-                <select
-                  value={selectedMes}
-                  onChange={(e) => changeSelectedMes(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0059bb] focus:ring-1 focus:ring-[#0059bb] cursor-pointer appearance-none"
-                >
-                  {availableMonths.map(mes => (
-                    <option key={mes} value={mes}>{mes === "Todos" ? "Todos os Meses" : mes}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="Mês Desinstalação"
+                options={availableMonths.filter(m => m !== "Todos")}
+                selectedValues={selectedMeses}
+                onChange={(vals) => {
+                  setSelectedMeses(vals);
+                  setCurrentPage(1);
+                }}
+                placeholder="Todos os Meses"
+              />
             </div>
 
             {/* Year Dropdown */}
@@ -1303,18 +1477,16 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 Ano Desinstalação
               </label>
-              <div className="relative">
-                <select
-                  value={selectedAno}
-                  onChange={(e) => changeSelectedAno(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0059bb] focus:ring-1 focus:ring-[#0059bb] cursor-pointer appearance-none"
-                >
-                  {availableYears.map(year => (
-                    <option key={year} value={year}>{year === "Todos" ? "Todos os Anos" : year}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="Ano Desinstalação"
+                options={availableYears.filter(y => y !== "Todos")}
+                selectedValues={selectedAnos}
+                onChange={(vals) => {
+                  setSelectedAnos(vals);
+                  setCurrentPage(1);
+                }}
+                placeholder="Todos os Anos"
+              />
             </div>
 
             {/* CD Filial Dropdown */}
@@ -1323,19 +1495,16 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 CD Filial
               </label>
-              <div className="relative">
-                <select
-                  value={selectedFilial}
-                  onChange={(e) => changeSelectedFilial(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0059bb] focus:ring-1 focus:ring-[#0059bb] cursor-pointer appearance-none"
-                >
-                  <option value="Todos">Seleções múltiplas (Todas)</option>
-                  {availableFiliais.filter(f => f !== "Todos").map(fil => (
-                    <option key={fil} value={fil}>{fil}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="CD Filial"
+                options={availableFiliais.filter(f => f !== "Todos")}
+                selectedValues={selectedFiliais}
+                onChange={(vals) => {
+                  setSelectedFiliais(vals);
+                  setCurrentPage(1);
+                }}
+                placeholder="Todas as Filiais"
+              />
             </div>
 
             {/* Motivo Desinstalação Dropdown */}
@@ -1344,18 +1513,16 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <FileText className="w-3.5 h-3.5 text-slate-400" />
                 Motivo Desinstalação
               </label>
-              <div className="relative">
-                <select
-                  value={selectedMotivo}
-                  onChange={(e) => changeSelectedMotivo(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0059bb] focus:ring-1 focus:ring-[#0059bb] cursor-pointer appearance-none"
-                >
-                  {availableMotivos.map(mot => (
-                    <option key={mot} value={mot}>{mot === "Todos" ? "Todos os Motivos" : mot}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="Motivo Desinstalação"
+                options={availableMotivos.filter(m => m !== "Todos")}
+                selectedValues={selectedMotivos}
+                onChange={(vals) => {
+                  setSelectedMotivos(vals);
+                  setCurrentPage(1);
+                }}
+                placeholder="Todos os Motivos"
+              />
             </div>
 
             {/* Sidebar mini KPIs removidos para melhor visualização no painel principal */}
@@ -1543,8 +1710,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 onClick={() => {
                   changeSelectedAno("Todos");
                   changeSelectedFilial("Todos");
-                  setSelectedMes("Todos");
-                  setSelectedMotivo("Todos");
+                  changeSelectedMes("Todos");
+                  changeSelectedMotivo("Todos");
                   changeSearchTerm("");
                 }}
                 className="text-xs text-[#0059bb] hover:underline font-bold shrink-0 ml-4"
@@ -1570,6 +1737,9 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#0059bb]"></span>
                       Quantidade de Pneus (Total)
+                      <Tooltip content="Quantidade consolidada de todos os pneus cadastrados e ativos no pátio logístico." position="bottom">
+                        <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
                     </p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-display font-black text-[#0059bb]">
@@ -1595,6 +1765,9 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                       Tempo Médio em Estoque (Giro)
+                      <Tooltip content="Tempo médio (Giro de Estoque) que os pneus permanecem no pátio. Calculado como a soma total dos dias em estoque dividida pela quantidade total de pneus." position="bottom">
+                        <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
                     </p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-display font-black text-slate-800">
@@ -1621,7 +1794,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     bg: "bg-blue-50/50",
                     border: "border-blue-100",
                     iconBg: "bg-blue-50 text-blue-600",
-                    icon: <RefreshCw className="w-5 h-5" />
+                    icon: <RefreshCw className="w-5 h-5" />,
+                    tooltip: "Pneus retirados de uso para recapagem/reforma, visando prolongar sua durabilidade."
                   },
                   {
                     title: "Novo",
@@ -1631,7 +1805,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     bg: "bg-emerald-50/50",
                     border: "border-emerald-100",
                     iconBg: "bg-emerald-50 text-emerald-600",
-                    icon: <Sparkles className="w-5 h-5" />
+                    icon: <Sparkles className="w-5 h-5" />,
+                    tooltip: "Pneus novos de fábrica (zero uso) aguardando sua primeira montagem na frota."
                   },
                   {
                     title: "Conserto",
@@ -1641,7 +1816,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     bg: "bg-amber-50/50",
                     border: "border-amber-100",
                     iconBg: "bg-amber-50 text-amber-600",
-                    icon: <AlertCircle className="w-5 h-5" />
+                    icon: <AlertCircle className="w-5 h-5" />,
+                    tooltip: "Pneus que precisam de reparos pontuais (furos, vulcanização) antes de rodar novamente."
                   },
                   {
                     title: "Reutilização",
@@ -1651,7 +1827,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     bg: "bg-indigo-50/50",
                     border: "border-indigo-100",
                     iconBg: "bg-indigo-50 text-indigo-600",
-                    icon: <Layers className="w-5 h-5" />
+                    icon: <Layers className="w-5 h-5" />,
+                    tooltip: "Pneus usados com sulcos operacionais adequados, prontos para remontagem."
                   },
                   {
                     title: "Sucata",
@@ -1662,7 +1839,8 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     border: "border-rose-100",
                     iconBg: "bg-rose-50 text-rose-600",
                     icon: <Trash2 className="w-5 h-5" />,
-                    colSpan: "col-span-2 md:col-span-1"
+                    colSpan: "col-span-2 md:col-span-1",
+                    tooltip: "Pneus inutilizados definitivamente por desgaste total ou avarias estruturais irreparáveis."
                   }
                 ].map((card, idx) => (
                   <motion.div
@@ -1672,12 +1850,17 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     transition={{ delay: idx * 0.05 }}
                     className={`bg-white rounded-xl border border-slate-200/80 p-4 flex items-center justify-between hover:shadow-md hover:border-slate-300 transition-all ${card.colSpan || ""}`}
                   >
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{card.title}</p>
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider truncate">{card.title}</p>
+                        <Tooltip content={card.tooltip} position="bottom">
+                          <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                        </Tooltip>
+                      </div>
                       <p className={`text-2xl font-display font-bold ${card.color}`}>{card.value}</p>
                       <p className="text-[10px] text-slate-600 font-semibold">{card.subtitle}</p>
                     </div>
-                    <div className={`p-3 rounded-xl ${card.iconBg}`}>
+                    <div className={`p-3 rounded-xl shrink-0 ${card.iconBg}`}>
                       {card.icon}
                     </div>
                   </motion.div>
@@ -2167,47 +2350,58 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   </div>
 
                   {/* Quick Filters */}
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedMes}
-                      onChange={(e) => changeSelectedMes(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none"
-                    >
-                      {availableMonths.map(mes => (
-                        <option key={mes} value={mes}>{mes === "Todos" ? "Todos os Meses" : mes}</option>
-                      ))}
-                    </select>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="w-40">
+                      <MultiSelect
+                        label="Mês"
+                        options={availableMonths.filter(m => m !== "Todos")}
+                        selectedValues={selectedMeses}
+                        onChange={(vals) => {
+                          setSelectedMeses(vals);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Todos os Meses"
+                      />
+                    </div>
 
-                    <select
-                      value={selectedAno}
-                      onChange={(e) => changeSelectedAno(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none"
-                    >
-                      {availableYears.map(year => (
-                        <option key={year} value={year}>{year === "Todos" ? "Todos os Anos" : `Ano ${year}`}</option>
-                      ))}
-                    </select>
+                    <div className="w-36">
+                      <MultiSelect
+                        label="Ano"
+                        options={availableYears.filter(y => y !== "Todos")}
+                        selectedValues={selectedAnos}
+                        onChange={(vals) => {
+                          setSelectedAnos(vals);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Todos os Anos"
+                      />
+                    </div>
 
-                    <select
-                      value={selectedFilial}
-                      onChange={(e) => changeSelectedFilial(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none"
-                    >
-                      <option value="Todos">Todas as Filiais</option>
-                      {availableFiliais.filter(f => f !== "Todos").map(fil => (
-                        <option key={fil} value={fil}>{fil}</option>
-                      ))}
-                    </select>
+                    <div className="w-44">
+                      <MultiSelect
+                        label="Filial"
+                        options={availableFiliais.filter(f => f !== "Todos")}
+                        selectedValues={selectedFiliais}
+                        onChange={(vals) => {
+                          setSelectedFiliais(vals);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Todas as Filiais"
+                      />
+                    </div>
 
-                    <select
-                      value={selectedMotivo}
-                      onChange={(e) => changeSelectedMotivo(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none"
-                    >
-                      {availableMotivos.map(mot => (
-                        <option key={mot} value={mot}>{mot === "Todos" ? "Todos os Motivos" : mot}</option>
-                      ))}
-                    </select>
+                    <div className="w-40">
+                      <MultiSelect
+                        label="Motivo"
+                        options={availableMotivos.filter(m => m !== "Todos")}
+                        selectedValues={selectedMotivos}
+                        onChange={(vals) => {
+                          setSelectedMotivos(vals);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Todos os Motivos"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2272,15 +2466,78 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <table className="w-full text-center border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-3 px-4 text-center">OPERADOR / CD</th>
-                          <th className="py-3 px-4 text-center">FOGO</th>
-                          <th className="py-3 px-4 text-center">MARCA / MODELO</th>
-                          <th className="py-3 px-4 text-center">DIMENSÃO</th>
-                          <th className="py-3 px-4 text-center">BANDA BORRACHA</th>
-                          <th className="py-3 px-4 text-center">Nº VIDAS</th>
-                          <th className="py-3 px-4 text-center">KM ACUMULADO</th>
-                          <th className="py-3 px-4 text-center">MOTIVO RETIRADA</th>
-                          <th className="py-3 px-4 text-center">DIAS EM ESTOQUE</th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              OPERADOR / CD
+                              <Tooltip content="Centro de Distribuição ou Filial onde o pneu está alocado fisicamente.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              FOGO
+                              <Tooltip content="Número de gravação física a quente na lateral do pneu para controle patrimonial único.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              MARCA / MODELO
+                              <Tooltip content="Fabricante do pneu original e modelo do desenho de sua carcaça.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              DIMENSÃO
+                              <Tooltip content="Medida e especificações de largura, perfil e aro. Ex: 295/80R22.5.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              BANDA BORRACHA
+                              <Tooltip content="Marca do fabricante e modelo da banda de borracha aplicada no processo de reforma do pneu.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              Nº VIDAS
+                              <Tooltip content="Indica o ciclo de vida atual da carcaça do pneu. Ex: 1 (novo), 2 (1ª reforma), 3 (2ª reforma), etc.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              KM ACUMULADO
+                              <Tooltip content="Total de quilômetros rodados acumulados pelo pneu ao longo de toda a sua operação.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              MOTIVO RETIRADA
+                              <Tooltip content="Motivo pelo qual o pneu foi desinstalado do veículo e movido para o estoque.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
+                          <th className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              DIAS EM ESTOQUE
+                              <Tooltip content="Dias consecutivos que o pneu está ocioso no pátio físico do operador de frota.">
+                                <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
+                            </div>
+                          </th>
                           <th className="py-3 px-4 text-center">OPÇÕES</th>
                         </tr>
                       </thead>
@@ -3141,7 +3398,12 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   
                   {/* CD Filial dropdown */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CD Filial</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CD Filial</label>
+                      <Tooltip content="Selecione o Centro de Distribuição onde o pneu está fisicamente alocado.">
+                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
+                    </div>
                     <select
                       value={formCdFilial || "CD IMPERATRIZ"}
                       onChange={(e) => setFormCdFilial(e.target.value)}
@@ -3156,7 +3418,12 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
 
                   {/* Fogo Input */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Fogo (Nº Série)</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Fogo (Nº Série)</label>
+                      <Tooltip content="Número de fogo é o código de identificação único gravado a quente na lateral do pneu.">
+                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
+                    </div>
                     <input
                       type="text"
                       placeholder="Ex: GM5161, F9820"
@@ -3173,7 +3440,12 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   
                   {/* N Vidas */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nº de Vida (Recap)</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nº de Vida (Recap)</label>
+                      <Tooltip content="Indica quantas vezes este pneu já passou por reforma ou recapagem.">
+                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
+                    </div>
                     <input
                       type="number"
                       min={1}
@@ -3186,7 +3458,12 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
 
                   {/* KM Percorrido */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KM Percorrido</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KM Percorrido</label>
+                      <Tooltip content="Quilometragem acumulada do pneu desde a última instalação.">
+                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
+                    </div>
                     <input
                       type="number"
                       min={0}
@@ -3198,7 +3475,12 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
 
                   {/* Dias em estoque */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dias em Estoque</label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dias em Estoque</label>
+                      <Tooltip content="Quantidade de dias que o pneu está parado ocioso no pátio físico.">
+                        <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                      </Tooltip>
+                    </div>
                     <input
                       type="number"
                       min={0}
