@@ -44,6 +44,8 @@ import {
   Tire,
   FULL_INITIAL_DATASET
 } from "@/lib/tireData";
+import { tireService } from "@/services/tireService";
+import { settingsService } from "@/services/settingsService";
 
 function getNormalizedMotivo(motivoRaw: string): string {
   let mot = (motivoRaw || "").toUpperCase().trim();
@@ -108,18 +110,44 @@ export default function Home() {
   // Core Tires State - Lazy initialized to prevent state-in-effect issues
   const [tires, setTires] = useState<Tire[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [dbStatus, setDbStatus] = useState<"connecting" | "synced" | "local_fallback" | "error">("connecting");
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      let stored = getStoredTires();
-      if (stored.length === 90 && stored.filter(t => Number(t.id) >= 5 && Number(t.id) <= 90).length === 86) {
-        stored = FULL_INITIAL_DATASET;
-        saveTires(FULL_INITIAL_DATASET);
+    async function initAndLoad() {
+      try {
+        setDbStatus("connecting");
+        // 1. Initialize database tables automatically and seed if empty
+        await tireService.initDb();
+        
+        // 2. Load tires from Supabase database
+        const result = await tireService.getAll();
+        
+        if (result.supabaseConfigured) {
+          if (result.tires && result.tires.length > 0) {
+            setTires(sanitizeTiresList(result.tires));
+            setDbStatus("synced");
+          } else {
+            // Fallback if Supabase returns nothing but is configured
+            let stored = getStoredTires();
+            setTires(sanitizeTiresList(stored));
+            setDbStatus("local_fallback");
+          }
+        } else {
+          // Supabase not configured, fall back silently
+          let stored = getStoredTires();
+          setTires(sanitizeTiresList(stored));
+          setDbStatus("local_fallback");
+        }
+      } catch (err) {
+        console.warn("Aviso ao sincronizar com Supabase, usando LocalStorage como fallback:", err);
+        let stored = getStoredTires();
+        setTires(sanitizeTiresList(stored));
+        setDbStatus("local_fallback");
+      } finally {
+        setIsLoaded(true);
       }
-      setTires(sanitizeTiresList(stored));
-      setIsLoaded(true);
-    }, 0);
-    return () => clearTimeout(timer);
+    }
+    initAndLoad();
   }, []);
 
   // Search State
@@ -182,16 +210,37 @@ export default function Home() {
     }
     return null;
   });
+
+  // Sync logo from Supabase on start
+  useEffect(() => {
+    async function loadLogo() {
+      try {
+        const logo = await settingsService.getLogo();
+        if (logo !== null) {
+          setCustomLogo(logo || null);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar logotipo do Supabase:", err);
+      }
+    }
+    loadLogo();
+  }, [setCustomLogo]);
   const [importModalTab, setImportModalTab] = useState<"data" | "logo">("data");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState("");
 
-  const handleLogoUpload = (base64Data: string | null) => {
+  const handleLogoUpload = async (base64Data: string | null) => {
     setCustomLogo(base64Data);
-    if (base64Data) {
-      localStorage.setItem("custom_tire_dashboard_logo", base64Data);
-    } else {
-      localStorage.removeItem("custom_tire_dashboard_logo");
+    try {
+      if (base64Data) {
+        await settingsService.saveLogo(base64Data);
+        localStorage.setItem("custom_tire_dashboard_logo", base64Data);
+      } else {
+        await settingsService.removeLogo();
+        localStorage.removeItem("custom_tire_dashboard_logo");
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar logotipo com o Supabase:", err);
     }
   };
 
@@ -264,13 +313,6 @@ export default function Home() {
   const [selectedDetailTire, setSelectedDetailTire] = useState<Tire | null>(null);
   const [tableMode, setTableMode] = useState<"padrão" | "planilha">("padrão");
   const [replaceExisting, setReplaceExisting] = useState(true);
-
-  // Update localStorage when state changes
-  const updateTiresState = (newTires: Tire[]) => {
-    const sanitized = sanitizeTiresList(newTires);
-    setTires(sanitized);
-    saveTires(sanitized);
-  };
 
   // List of distinct years in dataset for filter
   const availableYears = useMemo(() => {
@@ -505,82 +547,113 @@ export default function Home() {
   };
 
   // Add or Edit Submission
-  const handleSaveTire = (e: React.FormEvent) => {
+  const handleSaveTire = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formFogo.trim()) {
       alert("Por favor, preencha o número de fogo.");
       return;
     }
 
-    if (currentEditingTire) {
-      // Edit mode
-      const updated = tires.map(t => {
-        if (t.id === currentEditingTire.id) {
-          return {
-            ...t,
-            cdFilial: formCdFilial,
-            fogo: formFogo.trim(),
-            nVida: Number(formNVida),
-            kmPercorrido: Number(formKmPercorrido),
-            ano: Number(formAno),
-            mes: formMes,
-            diasEmEstoque: Number(formDiasEmEstoque),
-            modelo: formModelo,
-            motivoDesinstalacao: formMotivo,
-            borracha: formBorracha,
-            dimensao: formDimensao,
-            filial: formFilial || undefined,
-            s1: formS1 || undefined,
-            s2: formS2 || undefined,
-            s3: formS3 || undefined,
-            s4: formS4 || undefined,
-            s5: formS5 || undefined,
-            dataEvento: formDataEvento || undefined,
-            posicao: formPosicao || undefined,
-            placa: formPlaca || undefined,
-            qtd: Number(formQtd) || 1,
-            marca: formMarca || undefined,
-            anoDesinstalacao: formAnoDesinstalacao ? Number(formAnoDesinstalacao) : undefined,
-            mesAnalisado: formMesAnalisado || undefined
-          };
-        }
-        return t;
-      });
-      updateTiresState(updated);
-      setIsAddEditModalOpen(false);
-      resetForm();
-    } else {
-      // Add mode
-      const newTire: Tire = {
-        id: String(Date.now()),
-        qtd: Number(formQtd) || 1,
-        cdFilial: formCdFilial,
-        fogo: formFogo.trim(),
-        nVida: Number(formNVida),
-        kmPercorrido: Number(formKmPercorrido),
-        ano: Number(formAno),
-        mes: formMes,
-        diasEmEstoque: Number(formDiasEmEstoque),
-        modelo: formModelo,
-        motivoDesinstalacao: formMotivo,
-        borracha: formBorracha,
-        dimensao: formDimensao,
-        filial: formFilial || undefined,
-        s1: formS1 || undefined,
-        s2: formS2 || undefined,
-        s3: formS3 || undefined,
-        s4: formS4 || undefined,
-        s5: formS5 || undefined,
-        dataEvento: formDataEvento || undefined,
-        posicao: formPosicao || undefined,
-        placa: formPlaca || undefined,
-        marca: formMarca || undefined,
-        anoDesinstalacao: formAnoDesinstalacao ? Number(formAnoDesinstalacao) : undefined,
-        mesAnalisado: formMesAnalisado || undefined
-      };
-      updateTiresState([newTire, ...tires]);
-      setIsAddEditModalOpen(false);
-      resetForm();
+    try {
+      if (currentEditingTire) {
+        // Edit mode
+        const updatedTire: Tire = {
+          ...currentEditingTire,
+          cdFilial: formCdFilial,
+          fogo: formFogo.trim(),
+          nVida: Number(formNVida),
+          kmPercorrido: Number(formKmPercorrido),
+          ano: Number(formAno),
+          mes: formMes,
+          diasEmEstoque: Number(formDiasEmEstoque),
+          modelo: formModelo,
+          motivoDesinstalacao: formMotivo,
+          borracha: formBorracha,
+          dimensao: formDimensao,
+          filial: formFilial || undefined,
+          s1: formS1 || undefined,
+          s2: formS2 || undefined,
+          s3: formS3 || undefined,
+          s4: formS4 || undefined,
+          s5: formS5 || undefined,
+          dataEvento: formDataEvento || undefined,
+          posicao: formPosicao || undefined,
+          placa: formPlaca || undefined,
+          qtd: Number(formQtd) || 1,
+          marca: formMarca || undefined,
+          anoDesinstalacao: formAnoDesinstalacao ? Number(formAnoDesinstalacao) : undefined,
+          mesAnalisado: formMesAnalisado || undefined
+        };
+
+        // Persist to Supabase
+        await tireService.save(updatedTire);
+
+        // Update state
+        setTires(prev => prev.map(t => t.id === currentEditingTire.id ? updatedTire : t));
+        setIsAddEditModalOpen(false);
+        resetForm();
+
+        // Add a notification for visual feedback
+        setNotifications(prev => [
+          {
+            id: Date.now().toString(),
+            text: `Pneu ${formFogo.trim()} atualizado com sucesso!`,
+            time: "Agora mesmo",
+            read: false
+          },
+          ...prev
+        ]);
+      } else {
+        // Add mode
+        const newTire: Tire = {
+          id: String(Date.now()),
+          qtd: Number(formQtd) || 1,
+          cdFilial: formCdFilial,
+          fogo: formFogo.trim(),
+          nVida: Number(formNVida),
+          kmPercorrido: Number(formKmPercorrido),
+          ano: Number(formAno),
+          mes: formMes,
+          diasEmEstoque: Number(formDiasEmEstoque),
+          modelo: formModelo,
+          motivoDesinstalacao: formMotivo,
+          borracha: formBorracha,
+          dimensao: formDimensao,
+          filial: formFilial || undefined,
+          s1: formS1 || undefined,
+          s2: formS2 || undefined,
+          s3: formS3 || undefined,
+          s4: formS4 || undefined,
+          s5: formS5 || undefined,
+          dataEvento: formDataEvento || undefined,
+          posicao: formPosicao || undefined,
+          placa: formPlaca || undefined,
+          marca: formMarca || undefined,
+          anoDesinstalacao: formAnoDesinstalacao ? Number(formAnoDesinstalacao) : undefined,
+          mesAnalisado: formMesAnalisado || undefined
+        };
+
+        // Persist to Supabase
+        await tireService.save(newTire);
+
+        // Update state
+        setTires(prev => [newTire, ...prev]);
+        setIsAddEditModalOpen(false);
+        resetForm();
+
+        // Add a notification for visual feedback
+        setNotifications(prev => [
+          {
+            id: Date.now().toString(),
+            text: `Pneu ${formFogo.trim()} adicionado com sucesso!`,
+            time: "Agora mesmo",
+            read: false
+          },
+          ...prev
+        ]);
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar no Supabase: " + err.message);
     }
   };
 
@@ -618,10 +691,25 @@ export default function Home() {
   };
 
   // Delete tire
-  const handleDeleteTire = (id: string) => {
+  const handleDeleteTire = async (id: string) => {
     if (confirm("Deseja realmente excluir este pneu do inventário?")) {
-      const updated = tires.filter(t => t.id !== id);
-      updateTiresState(updated);
+      try {
+        await tireService.delete(id);
+        setTires(prev => prev.filter(t => t.id !== id));
+        
+        // Add a notification for visual feedback
+        setNotifications(prev => [
+          {
+            id: Date.now().toString(),
+            text: "Pneu removido do inventário.",
+            time: "Agora mesmo",
+            read: false
+          },
+          ...prev
+        ]);
+      } catch (err: any) {
+        alert("Erro ao excluir do Supabase: " + err.message);
+      }
     }
   };
 
@@ -662,15 +750,18 @@ export default function Home() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
         if (data && Array.isArray(data.tires)) {
-          updateTiresState(data.tires);
+          // Sync backup to Supabase
+          const imported = await tireService.bulkImport(data.tires, true);
+          setTires(imported);
+          
           if (data.customLogo) {
-            handleLogoUpload(data.customLogo);
+            await handleLogoUpload(data.customLogo);
           }
-          alert("Backup restaurado com sucesso! " + data.tires.length + " pneus carregados.");
+          alert("Backup restaurado no Supabase com sucesso! " + data.tires.length + " pneus carregados.");
           setNotifications(prev => [
             {
               id: Date.now().toString(),
@@ -683,8 +774,8 @@ export default function Home() {
         } else {
           alert("O arquivo selecionado não é um backup de banco de dados válido.");
         }
-      } catch (err) {
-        alert("Erro ao ler o arquivo de backup. Certifique-se de selecionar um arquivo JSON válido.");
+      } catch (err: any) {
+        alert("Erro ao ler o arquivo de backup: " + err.message);
       }
     };
     reader.readAsText(file);
@@ -994,10 +1085,12 @@ export default function Home() {
 
       // Add to dataset
       if (replaceExisting) {
-        updateTiresState(newParsedTires);
+        const imported = await tireService.bulkImport(newParsedTires, true);
+        setTires(imported);
         setImportSuccess(`Sucesso! ${newParsedTires.length} pneus importados com sucesso, substituindo o estoque anterior.`);
       } else {
-        updateTiresState([...newParsedTires, ...tires]);
+        const imported = await tireService.bulkImport(newParsedTires, false);
+        setTires(imported);
         setImportSuccess(`Sucesso! ${newParsedTires.length} pneus adicionados ao estoque existente.`);
       }
       
@@ -1014,10 +1107,15 @@ export default function Home() {
     }
   };
 
-  const handleResetData = () => {
+  const handleResetData = async () => {
     if (confirm("Deseja redefinir os pneus para a lista inicial padrão de 90 itens? Todas as alterações manuais serão perdidas.")) {
-      updateTiresState(FULL_INITIAL_DATASET);
-      alert("Banco de dados redefinido!");
+      try {
+        const imported = await tireService.bulkImport(FULL_INITIAL_DATASET, true);
+        setTires(imported);
+        alert("Banco de dados redefinido com sucesso no Supabase!");
+      } catch (err: any) {
+        alert("Erro ao redefinir banco de dados: " + err.message);
+      }
     }
   };
 
@@ -2631,9 +2729,11 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   </div>
                   <button
                     onClick={() => {
-                      if (confirm("Quer realmente LIMPAR TODOS os pneus? Esta ação removerá os 90 pneus cadastrados e deixará o painel limpo para nova importação.")) {
-                        updateTiresState([]);
-                        alert("Estoque limpo!");
+                      if (confirm("Quer realmente LIMPAR TODOS os pneus? Esta ação removerá os pneus cadastrados no banco de dados e deixará o painel limpo para nova importação.")) {
+                        tireService.bulkImport([], true).then((refreshed) => {
+                          setTires(refreshed);
+                          alert("Estoque limpo!");
+                        }).catch(err => alert("Erro ao limpar estoque: " + err.message));
                       }
                     }}
                     className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors cursor-pointer shrink-0"
@@ -2646,13 +2746,13 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg space-y-3 leading-relaxed font-medium">
                   <p className="flex items-center gap-2 font-bold mb-1 text-emerald-800">
                     <Database className="w-4 h-4 shrink-0" />
-                    Portabilidade para GitHub & Vercel
+                    Conexão Ativa com Supabase (Nuvem)
                   </p>
                   <p className="text-xs text-emerald-700">
-                    Todas as suas alterações (pneus editados, novos pneus, logotipo personalizado, etc.) são salvas automaticamente no <strong>localStorage</strong> do seu navegador. Ao subir o projeto no GitHub ou implantar na Vercel, as informações <strong>não vão sumir</strong> no seu navegador!
+                    Todas as suas alterações (pneus editados, novos pneus, logotipo personalizado, etc.) são sincronizadas em tempo real com o banco de dados online do <strong>Supabase</strong>. Ao compartilhar o link da Vercel, todos os usuários visualizarão exatamente as mesmas informações!
                   </p>
                   <p className="text-xs text-emerald-700">
-                    Para garantir total segurança, trocar de dispositivo ou salvar o seu banco de dados atual diretamente no repositório do seu projeto, você pode baixar o backup JSON e restaurá-lo a qualquer momento:
+                    Você ainda pode utilizar a exportação e importação de backups em formato JSON para portabilidade rápida ou salvaguarda local offline:
                   </p>
                   
                   <div className="grid grid-cols-2 gap-3 pt-1">
@@ -2681,9 +2781,20 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg leading-relaxed font-medium">
                   <p className="flex items-center gap-2 font-bold mb-1">
                     <Info className="w-4 h-4 shrink-0" />
-                    Informações sobre Armazenamento
+                    Status da Conectividade do Banco
                   </p>
-                  Este applet utiliza persistência automatizada via <strong>localStorage</strong>. Todas as operações de adição, edição, exclusão e importação de planilhas feitas através do botão &quot;Importar XLS&quot; persistirão no seu navegador atual, mantendo as estatísticas operacionais de forma durável e interativa.
+                  <p className="text-xs">
+                    Status de Sincronização: {dbStatus === "synced" ? (
+                      <span className="text-emerald-600 font-bold">● Sincronizado com Supabase (Online)</span>
+                    ) : dbStatus === "connecting" ? (
+                      <span className="text-amber-600 font-bold">● Conectando ao Banco...</span>
+                    ) : (
+                      <span className="text-slate-500 font-bold">● Modo Fallback (LocalStorage Local)</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Caso as chaves de API do Supabase não estejam configuradas em seu ambiente Vercel (.env), o sistema opera em modo de contingência usando o armazenamento local para que nenhuma funcionalidade seja interrompida.
+                  </p>
                 </div>
               </div>
 
