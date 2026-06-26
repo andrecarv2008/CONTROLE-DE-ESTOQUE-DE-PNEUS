@@ -587,17 +587,17 @@ export default function Home() {
   // Open Edit Dialog
   const openEditModal = (tire: Tire) => {
     setCurrentEditingTire(tire);
-    setFormCdFilial(tire.cdFilial);
-    setFormFogo(tire.fogo);
-    setFormNVida(tire.nVida);
-    setFormKmPercorrido(tire.kmPercorrido);
-    setFormAno(tire.ano);
-    setFormMes(tire.mes);
-    setFormDiasEmEstoque(tire.diasEmEstoque);
-    setFormModelo(tire.modelo);
-    setFormMotivo(tire.motivoDesinstalacao);
-    setFormBorracha(tire.borracha);
-    setFormDimensao(tire.dimensao);
+    setFormCdFilial(tire.cdFilial || "CD IMPERATRIZ");
+    setFormFogo(tire.fogo || "");
+    setFormNVida(tire.nVida ?? 1);
+    setFormKmPercorrido(tire.kmPercorrido ?? 0);
+    setFormAno(tire.ano ?? 2025);
+    setFormMes(tire.mes || "Janeiro");
+    setFormDiasEmEstoque(tire.diasEmEstoque ?? 10);
+    setFormModelo(tire.modelo || "GOODYEAR");
+    setFormMotivo(tire.motivoDesinstalacao || "REFORMA");
+    setFormBorracha(tire.borracha || "VL100");
+    setFormDimensao(tire.dimensao || "275/80 R. 22,5");
     setFormFilial(tire.filial || "");
     setFormS1(tire.s1 || "");
     setFormS2(tire.s2 || "");
@@ -607,7 +607,7 @@ export default function Home() {
     setFormDataEvento(tire.dataEvento || "");
     setFormPosicao(tire.posicao || "");
     setFormPlaca(tire.placa || "");
-    setFormQtd(tire.qtd || 1);
+    setFormQtd(tire.qtd ?? 1);
     setFormMarca(tire.marca || "");
     setFormAnoDesinstalacao(tire.anoDesinstalacao ? String(tire.anoDesinstalacao) : "");
     setFormMesAnalisado(tire.mesAnalisado || "");
@@ -1033,12 +1033,9 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
               </div>
             )}
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-lg text-slate-800 tracking-tight lowercase">
-                  {customLogo ? "sua marca" : "mateus"}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Logística</p>
+              <span className="font-bold text-base text-slate-800 tracking-wider uppercase block">
+                transporte
+              </span>
             </div>
           </div>
 
@@ -2934,7 +2931,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CD Filial</label>
                     <select
-                      value={formCdFilial}
+                      value={formCdFilial || "CD IMPERATRIZ"}
                       onChange={(e) => setFormCdFilial(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -2951,7 +2948,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <input
                       type="text"
                       placeholder="Ex: GM5161, F9820"
-                      value={formFogo}
+                      value={formFogo || ""}
                       onChange={(e) => setFormFogo(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                       required
@@ -2969,7 +2966,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                       type="number"
                       min={1}
                       max={8}
-                      value={formNVida}
+                      value={formNVida ?? 1}
                       onChange={(e) => setFormNVida(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     />
@@ -2981,7 +2978,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <input
                       type="number"
                       min={0}
-                      value={formKmPercorrido}
+                      value={formKmPercorrido ?? 0}
                       onChange={(e) => setFormKmPercorrido(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     />
@@ -2993,7 +2990,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                     <input
                       type="number"
                       min={0}
-                      value={formDiasEmEstoque}
+                      value={formDiasEmEstoque ?? 0}
                       onChange={(e) => setFormDiasEmEstoque(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     />
@@ -3007,7 +3004,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Ano Desinstalação</label>
                     <select
-                      value={formAno}
+                      value={formAno ?? 2025}
                       onChange={(e) => setFormAno(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -3020,7 +3017,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Mês Retirada</label>
                     <select
-                      value={formMes}
+                      value={formMes || "Janeiro"}
                       onChange={(e) => setFormMes(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -3038,7 +3035,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Modelo / Fabricante</label>
                     <select
-                      value={formModelo}
+                      value={formModelo || "GOODYEAR"}
                       onChange={(e) => setFormModelo(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -3054,7 +3051,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Motivo Retirada</label>
                     <select
-                      value={formMotivo}
+                      value={formMotivo || "REFORMA"}
                       onChange={(e) => setFormMotivo(e.target.value as Tire["motivoDesinstalacao"])}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -3070,7 +3067,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Banda Borracha</label>
                     <select
-                      value={formBorracha}
+                      value={formBorracha || "VL100"}
                       onChange={(e) => setFormBorracha(e.target.value as Tire["borracha"])}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                     >
@@ -3088,7 +3085,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dimensão (Medidas)</label>
                   <select
-                    value={formDimensao}
+                    value={formDimensao || "275/80 R. 22,5"}
                     onChange={(e) => setFormDimensao(e.target.value as Tire["dimensao"])}
                     className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold animate-none"
                   >
@@ -3126,7 +3123,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="number"
                           min={1}
-                          value={formQtd}
+                          value={formQtd ?? 1}
                           onChange={(e) => setFormQtd(Number(e.target.value))}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold"
                         />
@@ -3138,7 +3135,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: CD IMPERATRIZ"
-                          value={formFilial}
+                          value={formFilial || ""}
                           onChange={(e) => setFormFilial(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3152,7 +3149,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: GOODYEAR"
-                          value={formMarca}
+                          value={formMarca || ""}
                           onChange={(e) => setFormMarca(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3164,7 +3161,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: Fevereiro"
-                          value={formMesAnalisado}
+                          value={formMesAnalisado || ""}
                           onChange={(e) => setFormMesAnalisado(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3178,7 +3175,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: HPX-9281"
-                          value={formPlaca}
+                          value={formPlaca || ""}
                           onChange={(e) => setFormPlaca(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3190,7 +3187,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: DIANTEIRA ESQUERDA"
-                          value={formPosicao}
+                          value={formPosicao || ""}
                           onChange={(e) => setFormPosicao(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3204,7 +3201,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="text"
                           placeholder="Ex: 25/06/2026"
-                          value={formDataEvento}
+                          value={formDataEvento || ""}
                           onChange={(e) => setFormDataEvento(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3216,7 +3213,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                         <input
                           type="number"
                           placeholder="Ex: 2025"
-                          value={formAnoDesinstalacao}
+                          value={formAnoDesinstalacao || ""}
                           onChange={(e) => setFormAnoDesinstalacao(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-2 px-3 text-xs font-semibold placeholder-slate-400"
                         />
@@ -3242,7 +3239,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                             </span>
                             <input
                               type="text"
-                              value={item.val}
+                              value={item.val || ""}
                               onChange={(e) => item.set(e.target.value)}
                               placeholder="12"
                               className="w-full bg-slate-50 border border-slate-200 focus:border-[#0059bb] rounded-lg py-1.5 pl-6 pr-1 text-xs font-mono font-bold text-slate-700 text-center"
