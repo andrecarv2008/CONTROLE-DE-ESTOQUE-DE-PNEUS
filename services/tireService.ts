@@ -1,4 +1,4 @@
-import { Tire } from "@/lib/tireData";
+import { Tire, getStoredTires, saveTires } from "@/lib/tireData";
 
 // Mapper from Frontend (camelCase) to Database (snake_case)
 export function toDbTire(t: Tire) {
@@ -81,10 +81,10 @@ export const tireService = {
     try {
       const res = await fetch("/api/tires");
       if (!res.ok) throw new Error("Erro na rede ao buscar pneus");
-      const data = await res.json();
+      const data = await res.ok ? await res.json() : { success: false, message: "Network error" };
       
       if (data.supabaseConfigured === false) {
-        return { tires: [], supabaseConfigured: false };
+        return { tires: getStoredTires(), supabaseConfigured: false };
       }
       
       if (!data.success) {
@@ -97,7 +97,7 @@ export const tireService = {
       };
     } catch (err: any) {
       console.warn("Aviso no tireService.getAll (esperado se Supabase não estiver configurado):", err.message || err);
-      return { tires: [], supabaseConfigured: false };
+      return { tires: getStoredTires(), supabaseConfigured: false };
     }
   },
 
@@ -112,10 +112,25 @@ export const tireService = {
       if (!res.ok) throw new Error("Erro de rede ao salvar pneu");
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Erro ao salvar pneu");
+      
+      // Also update local storage for dual persistence
+      try {
+        const current = getStoredTires();
+        const exists = current.some(t => t.id === tire.id);
+        const updated = exists ? current.map(t => t.id === tire.id ? tire : t) : [tire, ...current];
+        saveTires(updated);
+      } catch (e) {
+        console.warn("Erro ao salvar no LocalStorage secundário:", e);
+      }
+
       return data.tire;
     } catch (err: any) {
-      console.error("Erro no tireService.save:", err);
-      throw err;
+      console.warn("Erro no tireService.save, usando LocalStorage:", err);
+      const current = getStoredTires();
+      const exists = current.some(t => t.id === tire.id);
+      const updated = exists ? current.map(t => t.id === tire.id ? tire : t) : [tire, ...current];
+      saveTires(updated);
+      return tire;
     }
   },
 
@@ -130,10 +145,23 @@ export const tireService = {
       if (!res.ok) throw new Error("Erro de rede ao excluir pneu");
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Erro ao excluir pneu");
+
+      // Also update local storage for dual persistence
+      try {
+        const current = getStoredTires();
+        const updated = current.filter(t => t.id !== id);
+        saveTires(updated);
+      } catch (e) {
+        console.warn("Erro ao excluir do LocalStorage secundário:", e);
+      }
+
       return true;
     } catch (err: any) {
-      console.error("Erro no tireService.delete:", err);
-      throw err;
+      console.warn("Erro no tireService.delete, usando LocalStorage:", err);
+      const current = getStoredTires();
+      const updated = current.filter(t => t.id !== id);
+      saveTires(updated);
+      return true;
     }
   },
 
@@ -148,10 +176,23 @@ export const tireService = {
       if (!res.ok) throw new Error("Erro de rede ao importar planilha");
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Erro ao importar planilha");
+
+      // Also update local storage for dual persistence
+      try {
+        const current = replaceExisting ? [] : getStoredTires();
+        const updated = replaceExisting ? tires : [...tires, ...current];
+        saveTires(updated);
+      } catch (e) {
+        console.warn("Erro ao salvar importação no LocalStorage secundário:", e);
+      }
+
       return data.tires;
     } catch (err: any) {
-      console.error("Erro no tireService.bulkImport:", err);
-      throw err;
+      console.warn("Erro no tireService.bulkImport, usando LocalStorage:", err);
+      const current = replaceExisting ? [] : getStoredTires();
+      const updated = replaceExisting ? tires : [...tires, ...current];
+      saveTires(updated);
+      return updated;
     }
   }
 };

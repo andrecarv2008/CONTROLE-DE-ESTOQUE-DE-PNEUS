@@ -125,15 +125,15 @@ function Tooltip({ children, content, position = "top" }: TooltipProps) {
   };
 
   return (
-    <div className="group relative inline-block">
+    <span className="group relative inline-block">
       {children}
-      <div
-        className={`invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute ${positionClasses[position]} z-[9999] w-64 p-2.5 text-[11px] text-white bg-slate-800/95 backdrop-blur-xs rounded-lg shadow-lg pointer-events-none font-sans leading-relaxed text-center font-normal normal-case`}
+      <span
+        className={`invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute ${positionClasses[position]} z-[9999] w-64 p-2.5 text-[11px] text-white bg-slate-800/95 backdrop-blur-xs rounded-lg shadow-lg pointer-events-none font-sans leading-relaxed text-center font-normal normal-case block`}
       >
         {content}
-        <div className={`absolute border-4 ${arrowClasses[position]}`}></div>
-      </div>
-    </div>
+        <span className={`absolute border-4 ${arrowClasses[position]}`}></span>
+      </span>
+    </span>
   );
 }
 
@@ -1457,10 +1457,10 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
             <div className="px-4 mb-4">
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Mês Desinstalação
+                Mês Analisado
               </label>
               <MultiSelect
-                label="Mês Desinstalação"
+                label="Mês Analisado"
                 options={availableMonths.filter(m => m !== "Todos")}
                 selectedValues={selectedMeses}
                 onChange={(vals) => {
@@ -2353,7 +2353,7 @@ CD IMPERATRIZ\tCD IMPERATRIZ\t8220\t2\t14\t13\t14\t13\t14\t15/05/2026\t260\tTRUC
                   <div className="flex flex-wrap gap-2">
                     <div className="w-40">
                       <MultiSelect
-                        label="Mês"
+                        label="Mês Analisado"
                         options={availableMonths.filter(m => m !== "Todos")}
                         selectedValues={selectedMeses}
                         onChange={(vals) => {
